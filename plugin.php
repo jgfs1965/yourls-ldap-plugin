@@ -124,6 +124,9 @@ function ldapauth_get_ldap_connection()
 			die("Cannot connect to LDAP for site and service " . LDAPAUTH_DNS_SITES_AND_SERVICES);
 		}
 	} else {
+		if (defined("LDAPAUTH_LDAP_URI") && LDAPAUTH_LDAP_URI) {
+			return ldap_connect(LDAPAUTH_LDAP_URI);
+		}
 		return ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
 	}
 }
@@ -180,6 +183,10 @@ function ldapauth_is_valid_user($value)
 		$ldapConnection = ldapauth_get_ldap_connection();
 		if (!$ldapConnection) die("Cannot connect to LDAP " . LDAPAUTH_HOST);
 		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
+		ldap_set_option($ldapConnection, LDAP_OPT_X_TLS_REQUIRE_CERT, LDAP_OPT_X_TLS_DEMAND);
+		if (defined("LDAPAUTH_START_TLS") && LDAPAUTH_START_TLS) {
+			@ldap_start_tls($ldapConnection);
+		}
 		//ldap_set_option($ldapConnection, LDAP_OPT_REFERRALS, 0);
 
 		// should we to try and bind using the credentials being logged in with?
