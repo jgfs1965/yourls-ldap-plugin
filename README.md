@@ -1,3 +1,70 @@
+# YOURLS LDAPS / StartTLS plugin
+
+This is a fork of [mattv8/yourls-ldap-plugin](https://github.com/mattv8/yourls-ldap-plugin) with two extra features:
+
+1. **Full `ldaps://` URI support** via a new `LDAPAUTH_LDAP_URI` constant.
+2. **Strict TLS certificate verification** (`LDAP_OPT_X_TLS_DEMAND`) for StartTLS, instead of `NEVER`.
+
+The original plugin only supports `ldap_connect(host, port)` and, if `LDAPAUTH_START_TLS` is set, it used `LDAP_OPT_X_TLS_NEVER`. This fork lets you point YOURLS at a real `ldaps://` endpoint and still verifies the server certificate.
+
+## Changes vs. upstream
+
+```diff
+--- a/plugin.php
++++ b/plugin.php
+@@ -126,7 +126,10 @@ function ldapauth_get_ldap_connection()
+ 	} else {
+-		return ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
++		if (defined("LDAPAUTH_LDAP_URI") && LDAPAUTH_LDAP_URI) {
++			return ldap_connect(LDAPAUTH_LDAP_URI);
++		}
++		return ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
+ 	}
+@@
+ 		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
++		ldap_set_option($ldapConnection, LDAP_OPT_X_TLS_REQUIRE_CERT, LDAP_OPT_X_TLS_DEMAND);
+ 		if (defined("LDAPAUTH_START_TLS") && LDAPAUTH_START_TLS) {
+ 			@ldap_start_tls($ldapConnection);
+ 		}
+```
+
+## New/used constants
+
+- `LDAPAUTH_LDAP_URI` — e.g. `ldaps://ad.example.com:636`. If set and non-empty, it overrides `LDAPAUTH_HOST` / `LDAPAUTH_PORT`.
+- `LDAPAUTH_HOST` / `LDAPAUTH_PORT` — still used as fallback if `LDAPAUTH_LDAP_URI` is not defined.
+- `LDAPAUTH_START_TLS` — set to `true` to use StartTLS on `ldap://` port 389. Not used when on `ldaps://`.
+
+## How to install
+
+1. Download `plugin.php`.
+2. Place it in `user/plugins/ldap/` of your YOURLS install.
+3. Add the constants to `user/config.php`. Example:
+
+```php
+define( 'LDAPAUTH_HOST', 'ad.example.com' );
+define( 'LDAPAUTH_PORT', 389 );
+define( 'LDAPAUTH_LDAP_URI', 'ldaps://ad.example.com:636' );
+define( 'LDAPAUTH_BASE', 'DC=example,DC=com' );
+define( 'LDAPAUTH_USERNAME_FIELD', 'sAMAccountName' );
+define( 'LDAPAUTH_SEARCH_USER', 'CN=ldap,DC=example,DC=com' );
+define( 'LDAPAUTH_SEARCH_PASS', 'your-secure-password' );
+define( 'LDAPAUTH_START_TLS', false );
+define( 'LDAPAUTH_ALL_USERS_ADMIN', true );
+define( 'LDAPAUTH_USERCACHE_TYPE', 1 );
+```
+
+## Notes
+
+- For `ldaps://`, set `LDAPAUTH_LDAP_URI` and `LDAPAUTH_START_TLS` to `false`.
+- For StartTLS on 389, leave `LDAPAUTH_LDAP_URI` unset and set `LDAPAUTH_START_TLS` to `true`.
+- The CA certificate must be in the system's trust store (e.g. `/etc/ssl/certs`, updated with `update-ca-certificates`, or `SSL_CERT_FILE` / `CURL_CA_BUNDLE` for libldap).
+
+## License
+
+This plugin is based on `mattv8/yourls-ldap-plugin`, which is licensed under the GNU General Public License v3. The original license and copyright remain with the original authors.
+
+
+
 yourls-ldap-plugin
 ==================
 
